@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#2BAE66"            # Fresh teal green for accents
+backgroundColor = "#F4F5F7"          # Gentle light-gray background
+secondaryBackgroundColor = "#E6F2EB"  # Subtle light teal for containers/sidebar
+textColor = "#1C1C1E"                # Almost-black text for contrast
+font = "sans serif" 
