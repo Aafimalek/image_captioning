@@ -7,6 +7,33 @@ import pickle
 import os
 from PIL import Image
 from io import BytesIO
+from huggingface_hub import hf_hub_download
+
+# --- Model Loading ---
+@st.cache_resource
+def load_all_models(model_path, tokenizer_path, feature_extractor_path):
+    """Load and cache the AI models and tokenizer from Hugging Face."""
+    with st.spinner("Downloading models from the cloud... This may take a moment."):
+        try:
+            # Define your Hugging Face repo ID
+            repo_id = "aafimalek2032/image-captioning"
+
+            # Download and cache the model files
+            model_file = hf_hub_download(repo_id=repo_id, filename=model_path)
+            tokenizer_file = hf_hub_download(repo_id=repo_id, filename=tokenizer_path)
+            feature_extractor_file = hf_hub_download(repo_id=repo_id, filename=feature_extractor_path)
+
+            # Load the models using the downloaded file paths
+            caption_model = load_model(model_file)
+            feature_extractor = load_model(feature_extractor_file)
+            with open(tokenizer_file, "rb") as f:
+                tokenizer = pickle.load(f)
+                
+            return caption_model, feature_extractor, tokenizer
+            
+        except Exception as e:
+            st.error(f"⚠️ An error occurred while loading models: {e}", icon="🚨")
+            return None, None, None
 
 # --- Page Configuration ---
 st.set_page_config(
