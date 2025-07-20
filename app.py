@@ -7,33 +7,9 @@ import pickle
 import os
 from PIL import Image
 from io import BytesIO
-from huggingface_hub import hf_hub_download
+import requests
+import tempfile
 
-# --- Model Loading ---
-@st.cache_resource
-def load_all_models(model_path, tokenizer_path, feature_extractor_path):
-    """Load and cache the AI models and tokenizer from Hugging Face."""
-    with st.spinner("Downloading models from the cloud... This may take a moment."):
-        try:
-            # Define your Hugging Face repo ID
-            repo_id = "aafimalek2032/image-captioning"
-
-            # Download and cache the model files
-            model_file = hf_hub_download(repo_id=repo_id, filename=model_path)
-            tokenizer_file = hf_hub_download(repo_id=repo_id, filename=tokenizer_path)
-            feature_extractor_file = hf_hub_download(repo_id=repo_id, filename=feature_extractor_path)
-
-            # Load the models using the downloaded file paths
-            caption_model = load_model(model_file)
-            feature_extractor = load_model(feature_extractor_file)
-            with open(tokenizer_file, "rb") as f:
-                tokenizer = pickle.load(f)
-                
-            return caption_model, feature_extractor, tokenizer
-            
-        except Exception as e:
-            st.error(f"⚠️ An error occurred while loading models: {e}", icon="🚨")
-            return None, None, None
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -74,21 +50,41 @@ with st.sidebar:
 
 # --- Model Loading ---
 @st.cache_resource
-def load_all_models(model_path, tokenizer_path, feature_extractor_path):
-    """Load and cache the AI models and tokenizer."""
-    with st.spinner("Loading AI models... This may take a moment."):
-        try:
-            caption_model = load_model(model_path)
-            feature_extractor = load_model(feature_extractor_path)
-            with open(tokenizer_path, "rb") as f:
+def load_all_models_from_huggingface():
+    """Download models from Hugging Face and load them."""
+    base_url = "https://huggingface.co/aafimalek2032/image-captioning/resolve/main/"
+    model_files = {
+        "caption_model": "model.keras",
+        "feature_extractor": "feature_extractor.keras",
+        "tokenizer": "tokenizer.pkl"
+    }
+
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Download files
+            local_paths = {}
+            for key, filename in model_files.items():
+                response = requests.get(base_url + filename)
+                if response.status_code == 200:
+                    file_path = os.path.join(tmpdir, filename)
+                    with open(file_path, "wb") as f:
+                        f.write(response.content)
+                    local_paths[key] = file_path
+                else:
+                    st.error(f"Failed to download {filename} from Hugging Face.")
+                    return None, None, None
+            
+            # Load models and tokenizer
+            caption_model = load_model(local_paths["caption_model"])
+            feature_extractor = load_model(local_paths["feature_extractor"])
+            with open(local_paths["tokenizer"], "rb") as f:
                 tokenizer = pickle.load(f)
+
             return caption_model, feature_extractor, tokenizer
-        except FileNotFoundError:
-            st.error("⚠️ Model files not found! Please ensure the `models` directory and its contents are present.", icon="🚨")
-            return None, None, None
-        except Exception as e:
-            st.error(f"An error occurred while loading models: {e}")
-            return None, None, None
+
+    except Exception as e:
+        st.error(f"Error loading models from Hugging Face: {e}")
+        return None, None, None
 
 
 # --- Caption Generation ---
@@ -146,11 +142,7 @@ def main():
     st.markdown("---")
 
     # --- Load Models ---
-    models = load_all_models(
-        "models/model.keras",
-        "models/tokenizer.pkl",
-        "models/feature_extractor.keras"
-    )
+    models = load_all_models_from_huggingface()
     if not all(models):
         st.stop()
     
